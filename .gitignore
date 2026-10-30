@@ -1,0 +1,5 @@
+# never upload private keys or generated results
+data/
+__pycache__/
+*.pyc
+core/demo.py
