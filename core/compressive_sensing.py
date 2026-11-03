@@ -29,6 +29,14 @@ def make_phi(seed: int, m: int, n: int):
     return rng.standard_normal((m, n)) / np.sqrt(m)
 
 
+def block_permutation(seed, n_blocks):
+    """Seed-dependent shuffle of the block order.
+    Without it, the size of each block's measurements reveals how bright that block is (energy leaks),
+    so even a wrong seed would give a coarse silhouette of the image. Transmitted row i holds block perm[i]."""
+    rng = np.random.default_rng(np.random.SeedSequence([seed, 7]))
+    return rng.permutation(n_blocks)
+
+
 def _to_blocks(img, b):
     h, w = img.shape
     assert h % b == 0 and w % b == 0, "image size must be a multiple of the block size"
@@ -67,6 +75,7 @@ def compress(img, ratio=0.5, seed=12345, block=16, bits=8):
     X = _to_blocks(img.astype(np.float64), block)          # (nb, n)
     Phi = make_phi(seed, m, n)
     Y = X @ Phi.T                                           # (nb, m)
+    Y = Y[block_permutation(seed, Y.shape[0])]              # hide which measurements belong to which block
     q, lo, hi = quantize(Y, bits)
     meta = dict(shape=img.shape, block=block, m=m, bits=bits, lo=lo, hi=hi)
     return q, meta
@@ -76,7 +85,11 @@ def reconstruct(q, meta, seed=12345, iters=300, lam=0.005):
     """Rebuild the image from quantized measurements + seed (FISTA, L1 in DCT domain)."""
     b, m = meta["block"], meta["m"]
     n = b * b
-    Y = dequantize(q, meta["lo"], meta["hi"], meta["bits"])  # (nb, m)
+    Y = dequantize(q, meta["lo"], meta["hi"], meta["bits"])  # (nb, m), rows in shuffled order
+    perm = block_permutation(seed, Y.shape[0])
+    Y_ordered = np.empty_like(Y)
+    Y_ordered[perm] = Y                                      # undo the shuffle (wrong seed -> wrong order)
+    Y = Y_ordered
     Phi = make_phi(seed, m, n)
     D2 = _dct2_matrix(b)
     A = Phi @ D2.T                                           # y = A @ s

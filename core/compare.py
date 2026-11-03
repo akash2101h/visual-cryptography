@@ -68,14 +68,14 @@ def hybrid(secret_p, c1_p, c2_p, public_key, secret_key, ratio):
         share_area=pkg["share1"].size / sec.size,
         key="yes (lattice)", eye="no (computer decode)",
         psnr=psnr(sec, rec), ssim=ssim(sec, rec, data_range=1.0),
-        wrong_key=f"{psnr(sec, bad):.1f} dB",
+        wrong_key=f"{psnr(sec, bad):.1f} / {ssim(sec, bad, data_range=1.0):.2f}",
         note=f"share-vs-cover SSIM {res1:.2f}/{res2:.2f}")
 
 
 def main():
     a = sys.argv[1:]
-    secret_p = r"C:\Users\agk21\OneDrive\Pictures\Screenshots\photo.jpg"
-    c1_p = r"C:\Users\agk21\OneDrive\Pictures\Screenshots\Screenshot 2026-10-13 001628.png"
+    secret_p = r"C:\Users\agk21\OneDrive\Pictures\Screenshots\Screenshot 2026-10-12 234536.png"
+    c1_p = r"C:\Users\agk21\OneDrive\Pictures\Screenshots\Screenshot 2026-10-13 001628.png" 
     c2_p = r"C:\Users\agk21\OneDrive\Pictures\Screenshots\Screenshot 2026-10-13 001752.png"
     if not (secret_p and c1_p and c2_p):
         sys.exit("Give three image paths (edit them in pipeline.py or pass them on the command line).")
@@ -91,11 +91,13 @@ def main():
         rows.append(hybrid(secret_p, c1_p, c2_p, public_key, secret_key, r))
 
     print(f"\nSecret {P.SIZE}x{P.SIZE}\n")
-    print(f"{'Method':<42}{'Share area':>11}{'Key':>15}{'PSNR':>9}{'SSIM':>7}{'Wrong key':>11}")
-    print("-" * 95)
+    print(f"{'Method':<42}{'Share area':>11}{'Key':>15}{'PSNR':>9}{'SSIM':>7}{'Wrong key PSNR/SSIM':>21}")
+    print("-" * 105)
     for r in rows:
         ps = "inf" if r["psnr"] == float("inf") else f"{r['psnr']:.1f}"
-        print(f"{r['method']:<42}{r['share_area']:>10.0f}x{r['key']:>15}{ps:>9}{r['ssim']:>7.2f}{r['wrong_key']:>11}")
+        print(f"{r['method']:<42}{r['share_area']:>10.0f}x{r['key']:>15}{ps:>9}{r['ssim']:>7.2f}{r['wrong_key']:>21}")
+    print("\nWrong key = image rebuilt by someone holding both shares but a different lattice key.")
+    print("Judge it mainly by SSIM (near 0 = no structure left); PSNR depends on how bright the secret is.")
     print("\nNotes:")
     for r in rows:
         print(f"  {r['method']}: eye-readable = {r['eye']}; {r['note']}")
@@ -104,7 +106,7 @@ def main():
     os.makedirs(P.OUT_DIR, exist_ok=True)
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["method", "share_area_x", "key_needed", "eye_readable", "psnr_db", "ssim", "wrong_key_psnr", "note"])
+        w.writerow(["method", "share_area_x", "key_needed", "eye_readable", "psnr_db", "ssim", "wrong_key_psnr_dB_slash_ssim", "note"])
         for r in rows:
             w.writerow([r["method"], f"{r['share_area']:.1f}", r["key"], r["eye"],
                         "inf" if r["psnr"] == float("inf") else f"{r['psnr']:.2f}",

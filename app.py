@@ -110,7 +110,7 @@ def web_main():
     if "lattice_keys" not in st.session_state:
         st.session_state["lattice_keys"] = lwe.keygen()   # receiver's key pair, created per visit
 
-    types = ["png", "jpg", "jpeg", "bmp"]
+    types = ["png", "jpg", "jpeg", "bmp", "webp"]
     with st.sidebar:
         st.header("Inputs")
         secret_f = st.file_uploader("1. Secret image (to hide)", type=types)

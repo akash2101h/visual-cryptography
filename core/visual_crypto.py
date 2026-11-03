@@ -10,13 +10,18 @@ Usage:
     python vc_baseline.py                          # runs with generated demo images
     python vc_baseline.py secret.png c1.png c2.png # runs with your own images
 """
+import os
 import sys
+import secrets
 import itertools
 import numpy as np
-import os
 from PIL import Image, ImageDraw
 
-rng = np.random.default_rng(42)
+# IMPORTANT: pattern choices must come from a secure source of randomness (the operating system).
+# A fixed seed would let anyone who knows the code and the covers replay the choices and recover the secret
+# from a single share.
+def _rand_index(n):
+    return secrets.randbelow(n)
 
 # ---------- 2x2 patterns ----------
 # A pattern is a 2x2 array of 0/1. There are 16 possible patterns.
@@ -51,7 +56,7 @@ def basic_vc(secret):
     s2 = np.zeros_like(s1)
     for i in range(h):
         for j in range(w):
-            p = TWO_BLACK[rng.integers(len(TWO_BLACK))]      # random pattern
+            p = TWO_BLACK[_rand_index(len(TWO_BLACK))]        # random pattern
             q = p if secret[i, j] == 0 else 1 - p            # same (white) / complement (black)
             s1[2*i:2*i+2, 2*j:2*j+2] = p
             s2[2*i:2*i+2, 2*j:2*j+2] = q
@@ -94,7 +99,7 @@ def extended_vc(secret, cover1, cover2):
     for i in range(h):
         for j in range(w):
             options = TABLE[(secret[i, j], cover1[i, j], cover2[i, j])]
-            p, q = options[rng.integers(len(options))]
+            p, q = options[_rand_index(len(options))]
             s1[2*i:2*i+2, 2*j:2*j+2] = p
             s2[2*i:2*i+2, 2*j:2*j+2] = q
     return s1, s2
@@ -145,6 +150,7 @@ def main():
     # Extended VC
     e1, e2 = extended_vc(secret, cover1, cover2)
     es = stack(e1, e2)
+
     OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "outputs")
     os.makedirs(OUT, exist_ok=True)
     for name, arr in [("secret", secret), ("basic_share1", b1), ("basic_share2", b2),

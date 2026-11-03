@@ -49,8 +49,19 @@ KEY_DIR = os.path.join(HERE, "..", "data", "keys")
 
 
 # ----------- image helpers -----------
+def _flatten_to_white(img):
+    """Images with transparency (RGBA, LA, or palette with transparency) would otherwise have their
+    transparent areas turned black or into an arbitrary colour. Put them on a white background first."""
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        rgba = img.convert("RGBA")
+        background = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+        return Image.alpha_composite(background, rgba).convert("RGB")
+    return img
+
+
 def _gray(src, size):
     img = Image.open(src) if isinstance(src, str) else src
+    img = _flatten_to_white(img)
     return img.convert("L").resize(size, Image.LANCZOS)
 
 
@@ -123,9 +134,7 @@ def get_keys():
 # ----------- run everything on your images -----------
 def main():
     args = sys.argv[1:]
-    secret_p = r""
-    c1_p = r""
-    c2_p = r""
+    secret_p, c1_p, c2_p = (args[:3] if len(args) >= 3 else (SECRET_PATH, COVER1_PATH, COVER2_PATH))
     ratio = float(args[3]) if len(args) >= 4 else RATIO
     if not (secret_p and c1_p and c2_p):
         sys.exit("Give three image paths: edit SECRET_PATH / COVER1_PATH / COVER2_PATH at the top "
